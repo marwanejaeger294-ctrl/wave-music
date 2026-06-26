@@ -1,0 +1,52 @@
+name: Build APK WAVE
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Installer Java (nécessaire pour Gradle)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Installer les dépendances npm
+        run: npm install
+
+      - name: Ajouter la plateforme Android (si pas déjà présente)
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+
+      - name: Synchroniser Capacitor (copie www/ vers le projet Android)
+        run: npx cap sync android
+
+      - name: Rendre gradlew exécutable
+        run: chmod +x android/gradlew
+
+      - name: Compiler l'APK (debug, installable directement)
+        run: |
+          cd android
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Récupérer l'APK généré
+        uses: actions/upload-artifact@v4
+        with:
+          name: wave-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
